@@ -2,6 +2,7 @@ import requests
 import getpass
 import json
 import re
+from collections import Counter
 from datetime import datetime
 from rich.console import Console
 from rich.table import Table
@@ -146,9 +147,10 @@ class App:
             return
 
         # 1. Resumo do Sentimento Geral
-        pos = sentimentos.count("🟢 Positivo")
-        neg = sentimentos.count("🔴 Negativo")
-        neu = sentimentos.count("🟡 Neutro")
+        counts = Counter(sentimentos)
+        pos = counts.get("🟢 Positivo", 0)
+        neg = counts.get("🔴 Negativo", 0)
+        neu = counts.get("🟡 Neutro", 0)
         
         sentimento_geral = "Neutro"
         if pos > neg and pos > neu: sentimento_geral = "Positivo"
