@@ -74,7 +74,7 @@ class AgenteNoticiasCrypto:
         try:
             self.summarizer = pipeline("summarization", model="t5-small")
             self.sentiment_analyzer = pipeline(
-                "sentiment-analysis", 
+                "sentiment-analysis",
                 model="nlptown/bert-base-multilingual-uncased-sentiment"
             )
         except Exception as e:
@@ -102,9 +102,12 @@ class AgenteNoticiasCrypto:
     def _extrair_keywords(self, artigos):
         keywords_gerais = set()
         for artigo in artigos:
-            texto = f"{artigo['titulo']} {artigo.get('content', '')} {artigo.get('description', '')}"
-            tickers_encontrados = {ticker for ticker in CRYPTO_TICKERS if ticker in texto.upper()}
-            keywords_gerais.update(tickers_encontrados)
+            # NewsAPI uses 'title' not 'titulo'
+            texto = f"{artigo['title']} {artigo.get('content', '')} {artigo.get('description', '')}"
+            # Encontra tickers de cripto (ex: BTC, ETH) usando bordas de palavra para evitar correspondências parciais
+            for ticker in CRYPTO_TICKERS:
+                if re.search(rf"\b{ticker}\b", texto.upper()):
+                    keywords_gerais.add(ticker)
             palavras_capitalizadas = {palavra for palavra in re.findall(r'\b[A-Z][a-z]+\b', texto) if len(palavra) > 2}
             keywords_gerais.update(palavras_capitalizadas)
         return sorted(list(keywords_gerais))
@@ -118,7 +121,7 @@ class AgenteNoticiasCrypto:
             artigos_brutos = response.json().get("articles", [])
         except requests.exceptions.RequestException as e:
             CONSOLE.print(f"[bold red]ERRO DE CONEXÃO: {e}[/bold red]")
-            if e.response.status_code == 401: CONSOLE.print("[bold red]FALHA DE AUTENTICAÇÃO: Chave da API inválida.[/bold red]")
+            if e.response is not None and e.response.status_code == 401: CONSOLE.print("[bold red]FALHA DE AUTENTICAÇÃO: Chave da API inválida.[/bold red]")
             return None, None, None
         if not artigos_brutos:
             CONSOLE.print(f"[yellow]AVISO: Nenhum dado encontrado para o termo '{termo}'.[/yellow]")
@@ -132,7 +135,7 @@ class AgenteNoticiasCrypto:
             sentimento = self._analisar_sentimento(artigo['title'])
             sentimentos.append(sentimento)
             artigos_processados.append({"titulo": artigo['title'], "fonte": artigo['source']['name'], "link": artigo['url'], "resumo": resumo, "sentimento": sentimento})
-        
+
         keywords = self._extrair_keywords(artigos_brutos)
         return artigos_processados, sentimentos, keywords
 
@@ -154,7 +157,7 @@ class App:
                 sequencia_boot()
             else:
                 CONSOLE.print("[bold red]ERRO: Campo de chave não pode ser nulo.[/bold red]")
-    
+
     def exibir_menu(self):
         return Prompt.ask(
             "\n[bold green]root@cyber-agent:~$[/bold green] [bold white]INSERIR COMANDO[/bold white]",
@@ -166,9 +169,9 @@ class App:
     def executar_busca(self):
         termo = Prompt.ask(">>> [bold white]DEFINIR PARÂMETRO DE BUSCA[/bold white]", default="cryptocurrency", show_default=False)
         qtd = IntPrompt.ask(">>> [bold white]DEFINir LIMITE DE ARTIGOS[/bold white]", default=5, show_default=False)
-        
+
         artigos, sentimentos, keywords = self.agente.buscar_e_processar(termo, qtd)
-        
+
         if not artigos: return
 
         # --- Dashboard de Resultados ---
@@ -194,7 +197,7 @@ class App:
         )
         # Usando Columns para o layout de dashboard
         CONSOLE.print(Columns([painel_sentimento, painel_keywords], equal=True, expand=True))
-        
+
         # Tabela Detalhada
         table = Table(title=f"FEED DE DADOS DETALHADO: '{termo.upper()}'", show_header=True, header_style=ESTILO_TITULO, border_style="dim")
         table.add_column("TÍTULO", style="cyan", no_wrap=True, width=50)

@@ -33,11 +33,11 @@ class AgenteNoticiasCrypto:
             console.print("Carregando modelo de resumo (T5)...")
             # Modelo para resumir textos. É leve e eficaz.
             self.summarizer = pipeline("summarization", model="t5-small")
-            
+
             console.print("Carregando modelo de análise de sentimento (BERT multilíngue)...")
             # Modelo para análise de sentimento, otimizado para português e outras línguas.
             self.sentiment_analyzer = pipeline(
-                "sentiment-analysis", 
+                "sentiment-analysis",
                 model="nlptown/bert-base-multilingual-uncased-sentiment"
             )
             console.print("[bold green]Modelos carregados com sucesso![/bold green]\n")
@@ -58,7 +58,7 @@ class AgenteNoticiasCrypto:
             "sortBy": "publishedAt",
             "apiKey": NEWS_API_KEY
         }
-        
+
         console.print(f"Buscando as últimas {page_size} notícias sobre '{query}'...")
         try:
             response = requests.get(url, params=params)
@@ -81,7 +81,7 @@ class AgenteNoticiasCrypto:
 
         for i, artigo in enumerate(artigos):
             console.print(f"  -> Processando artigo {i+1}/{len(artigos)}: {artigo['title'][:50]}...")
-            
+
             # Pega o conteúdo ou a descrição se o conteúdo for muito curto
             texto_para_resumir = artigo.get('content') or artigo.get('description')
             if not texto_para_resumir or len(texto_para_resumir.split()) < 30:
@@ -95,7 +95,7 @@ class AgenteNoticiasCrypto:
                     resumo = resumo_ia[0]['summary_text']
                 except Exception as e:
                     resumo = f"Erro ao resumir: {e}"
-            
+
             # Análise de sentimento
             try:
                 sentimento_ia = self.sentiment_analyzer(artigo['title'])
@@ -117,7 +117,7 @@ class AgenteNoticiasCrypto:
                 "resumo": resumo,
                 "sentimento": sentimento
             })
-        
+
         console.print("[bold green]Processamento concluído![/bold green]\n")
         return artigos_processados
 
@@ -144,7 +144,7 @@ class AgenteNoticiasCrypto:
             )
 
         console.print(table)
-        
+
         # Exibe um painel com os links para leitura completa
         links_texto = "\n".join([f"• {art['titulo'][:40]}...: {art['link']}" for art in artigos])
         console.print(Panel(links_texto, title="🔗 Links para Leitura Completa", expand=False))
