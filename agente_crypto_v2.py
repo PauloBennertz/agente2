@@ -72,11 +72,12 @@ class AgenteNoticiasCrypto:
         try:
             response = requests.get(url, params=params)
             response.raise_for_status()
-            return response.json().get("articles", [])
-        except requests.exceptions.RequestException as e:
+            data = response.json()
+            return data.get("articles", []) if isinstance(data, dict) else []
+        except Exception as e:
             console.print(f"[bold red]Erro ao buscar notícias: {e}[/bold red]")
             # Verifica se o erro foi por causa de uma chave inválida
-            if response.status_code == 401:
+            if hasattr(e, 'response') and e.response is not None and e.response.status_code == 401:
                  console.print("[bold red]Parece que sua chave da API é inválida. Verifique e tente novamente.[/bold red]")
             return []
 
