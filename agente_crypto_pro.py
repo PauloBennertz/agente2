@@ -26,7 +26,7 @@ class AgenteNoticiasCrypto:
         try:
             self.summarizer = pipeline("summarization", model="t5-small")
             self.sentiment_analyzer = pipeline(
-                "sentiment-analysis", 
+                "sentiment-analysis",
                 model="nlptown/bert-base-multilingual-uncased-sentiment"
             )
             CONSOLE.print("[bold green]Modelos prontos![/bold green]\n")
@@ -56,15 +56,17 @@ class AgenteNoticiasCrypto:
         CONSOLE.print("Extraindo palavras-chave dos artigos...")
         keywords_gerais = set()
         for artigo in artigos:
-            texto = f"{artigo['titulo']} {artigo.get('content', '')} {artigo.get('description', '')}"
-            # Encontra tickers de cripto (ex: BTC, ETH)
-            tickers_encontrados = {ticker for ticker in CRYPTO_TICKERS if ticker in texto.upper()}
-            keywords_gerais.update(tickers_encontrados)
-            
+            # NewsAPI uses 'title' not 'titulo'
+            texto = f"{artigo['title']} {artigo.get('content', '')} {artigo.get('description', '')}"
+            # Encontra tickers de cripto (ex: BTC, ETH) usando bordas de palavra para evitar correspondências parciais
+            for ticker in CRYPTO_TICKERS:
+                if re.search(rf"\b{ticker}\b", texto.upper()):
+                    keywords_gerais.add(ticker)
+
             # Encontra palavras capitalizadas (nomes próprios, etc.)
             palavras_capitalizadas = {palavra for palavra in re.findall(r'\b[A-Z][a-z]+\b', texto) if len(palavra) > 2}
             keywords_gerais.update(palavras_capitalizadas)
-        
+
         return sorted(list(keywords_gerais))
 
     def buscar_e_processar(self, termo, qtd_artigos):
@@ -73,14 +75,14 @@ class AgenteNoticiasCrypto:
             "q": termo, "language": "pt", "pageSize": qtd_artigos,
             "sortBy": "publishedAt", "apiKey": self.api_key
         }
-        
+
         try:
             response = requests.get(url, params=params)
             response.raise_for_status()
             artigos_brutos = response.json().get("articles", [])
         except requests.exceptions.RequestException as e:
             CONSOLE.print(f"[bold red]Erro na busca de notícias: {e}[/bold red]")
-            if e.response.status_code == 401:
+            if e.response is not None and e.response.status_code == 401:
                 CONSOLE.print("[bold red]Sua chave da API pode ser inválida.[/bold red]")
             return None, None, None
 
@@ -94,10 +96,10 @@ class AgenteNoticiasCrypto:
         # Usando a barra de progresso do Rich
         for artigo in track(artigos_brutos, description="Processando notícias com IA..."):
             texto = artigo.get('content') or artigo.get('description', '')
-            
+
             resumo = self._resumir_texto(texto)
             sentimento = self._analisar_sentimento(artigo['title'])
-            
+
             sentimentos.append(sentimento)
             artigos_processados.append({
                 "titulo": artigo['title'],
@@ -106,7 +108,7 @@ class AgenteNoticiasCrypto:
                 "resumo": resumo,
                 "sentimento": sentimento
             })
-        
+
         keywords = self._extrair_keywords(artigos_brutos)
         return artigos_processados, sentimentos, keywords
 
@@ -128,7 +130,7 @@ class App:
                 self.agente = AgenteNoticiasCrypto(api_key=self.api_key)
             else:
                 CONSOLE.print("[bold red]A chave não pode estar vazia.[/bold red]")
-    
+
     def exibir_menu(self):
         return Prompt.ask(
             "\nO que você deseja fazer?",
@@ -139,9 +141,9 @@ class App:
     def executar_busca(self):
         termo = Prompt.ask("🔍 Digite o termo para buscar (ex: Bitcoin, NFTs, Ethereum)", default="cryptocurrency")
         qtd = IntPrompt.ask("📊 Quantos artigos você quer analisar?", default=5)
-        
+
         artigos, sentimentos, keywords = self.agente.buscar_e_processar(termo, qtd)
-        
+
         if not artigos:
             return
 
@@ -149,11 +151,11 @@ class App:
         pos = sentimentos.count("🟢 Positivo")
         neg = sentimentos.count("🔴 Negativo")
         neu = sentimentos.count("🟡 Neutro")
-        
+
         sentimento_geral = "Neutro"
         if pos > neg and pos > neu: sentimento_geral = "Positivo"
         elif neg > pos and neg > neu: sentimento_geral = "Negativo"
-        
+
         CONSOLE.print(Panel(
             f"Análise de {len(artigos)} artigos sobre '{termo}':\n\n"
             f"🟢 Positivos: {pos} | 🔴 Negativos: {neg} | 🟡 Neutros: {neu}\n\n"

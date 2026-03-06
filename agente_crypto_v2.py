@@ -14,11 +14,11 @@ def obter_chave_api():
     console = Console()
     console.print("[bold cyan]Bem-vindo ao Agente de Notícias Crypto![/bold cyan]")
     console.print("Para começar, você precisa de uma chave da API do [link=https://newsapi.org/]NewsAPI.org[/link].\n")
-    
+
     while True:
         # getpass oculta o que o usuário digita
         api_key = getpass.getpass("Digite sua chave da NewsAPI.org (a digitação será oculta): ")
-        
+
         if not api_key:
             console.print("[bold red]Erro: A chave não pode estar vazia. Tente novamente.[/bold red]\n")
         else:
@@ -35,17 +35,17 @@ class AgenteNoticiasCrypto:
         """Inicializa o agente com a chave da API e carrega os modelos de IA."""
         self.api_key = api_key
         console = Console()
-        
+
         console.print("[bold green]Inicializando o Agente de Notícias Crypto...[/bold green]")
-        
+
         # Carrega os modelos de IA. Isso pode levar alguns segundos na primeira execução.
         try:
             console.print("Carregando modelo de resumo (T5)...")
             self.summarizer = pipeline("summarization", model="t5-small")
-            
+
             console.print("Carregando modelo de análise de sentimento (BERT multilíngue)...")
             self.sentiment_analyzer = pipeline(
-                "sentiment-analysis", 
+                "sentiment-analysis",
                 model="nlptown/bert-base-multilingual-uncased-sentiment"
             )
             console.print("[bold green]Modelos carregados com sucesso![/bold green]\n")
@@ -66,7 +66,7 @@ class AgenteNoticiasCrypto:
             "sortBy": "publishedAt",
             "apiKey": self.api_key # Usa a chave armazenada na instância
         }
-        
+
         console = Console()
         console.print(f"Buscando as últimas {page_size} notícias sobre '{query}'...")
         try:
@@ -76,7 +76,7 @@ class AgenteNoticiasCrypto:
         except requests.exceptions.RequestException as e:
             console.print(f"[bold red]Erro ao buscar notícias: {e}[/bold red]")
             # Verifica se o erro foi por causa de uma chave inválida
-            if response.status_code == 401:
+            if e.response is not None and e.response.status_code == 401:
                  console.print("[bold red]Parece que sua chave da API é inválida. Verifique e tente novamente.[/bold red]")
             return []
 
@@ -94,7 +94,7 @@ class AgenteNoticiasCrypto:
 
         for i, artigo in enumerate(artigos):
             console.print(f"  -> Processando artigo {i+1}/{len(artigos)}: {artigo['title'][:50]}...")
-            
+
             texto_para_resumir = artigo.get('content') or artigo.get('description')
             if not texto_para_resumir or len(texto_para_resumir.split()) < 30:
                 resumo = "Texto muito curto para resumir."
@@ -105,7 +105,7 @@ class AgenteNoticiasCrypto:
                     resumo = resumo_ia[0]['summary_text']
                 except Exception as e:
                     resumo = f"Erro ao resumir: {e}"
-            
+
             try:
                 sentimento_ia = self.sentiment_analyzer(artigo['title'])
                 estrelas = int(sentimento_ia[0]['label'].split(' ')[0])
@@ -125,7 +125,7 @@ class AgenteNoticiasCrypto:
                 "resumo": resumo,
                 "sentimento": sentimento
             })
-        
+
         console.print("[bold green]Processamento concluído![/bold green]\n")
         return artigos_processados
 
@@ -152,7 +152,7 @@ class AgenteNoticiasCrypto:
             )
 
         console.print(table)
-        
+
         links_texto = "\n".join([f"• {art['titulo'][:40]}...: {art['link']}" for art in artigos])
         console.print(Panel(links_texto, title="🔗 Links para Leitura Completa", expand=False))
 
@@ -170,9 +170,9 @@ class AgenteNoticiasCrypto:
 if __name__ == "__main__":
     # 1. Obtém a chave da API do usuário
     chave = obter_chave_api()
-    
+
     # 2. Cria uma instância do agente com a chave fornecida
     agente = AgenteNoticiasCrypto(api_key=chave)
-    
+
     # 3. Executa o agente
     agente.executar()
