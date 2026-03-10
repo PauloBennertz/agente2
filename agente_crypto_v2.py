@@ -63,14 +63,14 @@ class AgenteNoticiasCrypto:
             "q": query,
             "language": language,
             "pageSize": page_size,
-            "sortBy": "publishedAt",
-            "apiKey": self.api_key # Usa a chave armazenada na instância
+            "sortBy": "publishedAt"
         }
+        headers = {"X-Api-Key": self.api_key}
 
         console = Console()
         console.print(f"Buscando as últimas {page_size} notícias sobre '{query}'...")
         try:
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, headers=headers)
             response.raise_for_status()
             return response.json().get("articles", [])
         except requests.exceptions.RequestException as e:
