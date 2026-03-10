@@ -114,9 +114,10 @@ class AgenteNoticiasCrypto:
 
     def buscar_e_processar(self, termo, qtd_artigos):
         url = "https://newsapi.org/v2/everything"
-        params = {"q": termo, "language": "pt", "pageSize": qtd_artigos, "sortBy": "publishedAt", "apiKey": self.api_key}
+        params = {"q": termo, "language": "pt", "pageSize": qtd_artigos, "sortBy": "publishedAt"}
+        headers = {"X-Api-Key": self.api_key}
         try:
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, headers=headers)
             response.raise_for_status()
             artigos_brutos = response.json().get("articles", [])
         except requests.exceptions.RequestException as e:

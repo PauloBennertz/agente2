@@ -55,13 +55,13 @@ class AgenteNoticiasCrypto:
             "q": query,
             "language": language,
             "pageSize": page_size,
-            "sortBy": "publishedAt",
-            "apiKey": NEWS_API_KEY
+            "sortBy": "publishedAt"
         }
+        headers = {"X-Api-Key": NEWS_API_KEY}
 
         console.print(f"Buscando as últimas {page_size} notícias sobre '{query}'...")
         try:
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, headers=headers)
             response.raise_for_status()  # Lança um erro para respostas HTTP ruins (4xx ou 5xx)
             return response.json().get("articles", [])
         except requests.exceptions.RequestException as e:
